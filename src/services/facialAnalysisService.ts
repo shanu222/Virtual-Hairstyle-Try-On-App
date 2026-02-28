@@ -1,7 +1,11 @@
 import * as faceapi from 'face-api.js';
 
-// Load face-api.js models
-const MODEL_URL = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/';
+// Try multiple CDN sources for models
+const MODEL_URLS = [
+  'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/',
+  'https://unpkg.com/face-api.js@0.22.2/weights/',
+  'https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/weights/',
+];
 
 export interface FacialAnalysis {
   faceShape: 'oval' | 'round' | 'square' | 'heart' | 'long' | 'diamond';
@@ -28,26 +32,49 @@ export interface RecommendedStyle {
 }
 
 let modelsLoaded = false;
+let modelLoadError: string | null = null;
 
 /**
- * Load face-api.js models from CDN
+ * Load face-api.js models from CDN with fallback
  */
 export async function initializeFaceAPI(): Promise<void> {
   if (modelsLoaded) return;
+  if (modelLoadError) throw new Error(modelLoadError);
 
-  try {
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-    ]);
-    modelsLoaded = true;
-    console.log('Face API models loaded successfully');
-  } catch (error) {
-    console.error('Failed to load Face API models:', error);
-    throw new Error('Failed to initialize facial analysis system');
+  let lastError: Error | null = null;
+
+  for (const modelUrl of MODEL_URLS) {
+    try {
+      console.log(`Attempting to load models from: ${modelUrl}`);
+
+      const loadPromises = [
+        faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
+        faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
+        faceapi.nets.faceRecognitionNet.loadFromUri(modelUrl),
+        faceapi.nets.faceExpressionNet.loadFromUri(modelUrl),
+      ];
+
+      // Add timeout for model loading (30 seconds)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Model loading timeout')), 30000)
+      );
+
+      await Promise.race([Promise.all(loadPromises), timeoutPromise]);
+
+      modelsLoaded = true;
+      modelLoadError = null;
+      console.log('✓ Face API models loaded successfully');
+      return;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`Failed to load from ${modelUrl}:`, lastError.message);
+      continue;
+    }
   }
+
+  // All CDNs failed
+  modelLoadError = 'Failed to load facial analysis models. Please check your internet connection.';
+  throw new Error(modelLoadError);
 }
 
 /**
@@ -59,17 +86,33 @@ export async function analyzeFace(imageElement: HTMLImageElement): Promise<Facia
   }
 
   try {
-    // Detect face
+    // Detect face with smaller detection input size for faster processing
     const detections = await faceapi
-      .detectAllFaces(imageElement, new faceapi.TinyFaceDetectorOptions())
+      .detectAllFaces(imageElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 416 }))
       .withFaceLandmarks()
       .withFaceExpressions();
 
     if (detections.length === 0) {
-      throw new Error('No face detected in image');
+      throw new Error(
+        'No face detected. Please ensure:\n' +
+        '- Your face is clearly visible\n' +
+        '- You are looking at the camera\n' +
+        '- Good lighting conditions\n' +
+        '- Face is not obscured by hair/accessories'
+      );
+    }
+
+    if (detections.length > 1) {
+      console.warn('Multiple faces detected. Using the first one.');
     }
 
     const detection = detections[0]; // Use first detected face
+    
+    // Validate detection score
+    if ((detection.detection.score || 0) < 0.5) {
+      throw new Error('Face detection confidence too low. Please try a clearer photo.');
+    }
+
     const landmarks = detection.landmarks.positions;
 
     // Calculate facial proportions
@@ -97,8 +140,9 @@ export async function analyzeFace(imageElement: HTMLImageElement): Promise<Facia
       confidence: Math.round((detection.detection.score || 0) * 100),
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during analysis';
     console.error('Error analyzing face:', error);
-    throw error;
+    throw new Error(errorMessage || 'Failed to analyze facial features');
   }
 }
 

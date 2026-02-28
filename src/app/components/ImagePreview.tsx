@@ -85,30 +85,42 @@ export function ImagePreview({
   const performFacialAnalysis = async (img: HTMLImageElement) => {
     try {
       setIsAnalyzing(true);
+      setAnalysisError(null);
 
-      // Initialize Face API
-      await initializeFaceAPI();
+      console.log('Starting facial analysis...');
+
+      // Initialize Face API with better error handling
+      try {
+        await initializeFaceAPI();
+        console.log('Face API initialized');
+      } catch (initError) {
+        const errorMsg = initError instanceof Error ? initError.message : 'Failed to load AI models';
+        console.error('Initialization error:', errorMsg);
+        throw new Error(`AI Model Loading: ${errorMsg}`);
+      }
 
       // Analyze face
       const analysis = await analyzeFace(img);
+      console.log('Face analysis complete:', analysis);
       setFacialAnalysis(analysis);
 
       // Generate recommendations
       if (allHairstyles.length > 0) {
+        console.log('Generating recommendations...');
         const { topRecommendations, suggestedColor: color } = generateRecommendations(
           analysis,
           allHairstyles
         );
         setRecommendations(topRecommendations);
         setSuggestedColor(color);
+        console.log('Recommendations generated:', topRecommendations);
       }
 
       setIsAnalyzing(false);
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       console.error('Facial analysis error:', error);
-      setAnalysisError(
-        error instanceof Error ? error.message : 'Failed to analyze facial features'
-      );
+      setAnalysisError(errorMsg);
       setIsAnalyzing(false);
     }
   };

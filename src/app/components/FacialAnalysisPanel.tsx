@@ -31,9 +31,17 @@ export function FacialAnalysisPanel({
           <div>
             <h3 className="font-semibold text-red-900">Analysis Failed</h3>
             <p className="text-sm text-red-700 mt-1">{error}</p>
-            <p className="text-xs text-red-600 mt-2">
-              Please ensure your photo clearly shows your face from the front.
-            </p>
+            <div className="mt-3 p-3 bg-red-100 rounded text-xs text-red-800 space-y-1">
+              <p className="font-semibold">✓ Tips to fix this:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Ensure your face is clearly visible (no glasses/hats)</li>
+                <li>Face should be centered in the photo</li>
+                <li>Good lighting condition (not too dark or bright)</li>
+                <li>Face looking directly at camera</li>
+                <li>Entire face visible (chin to forehead)</li>
+                <li>Check your internet connection (models load from CDN)</li>
+              </ul>
+            </div>
           </div>
         </div>
       </Card>
@@ -208,8 +216,16 @@ export function FacialAnalysisPanel({
       {/* AI Information */}
       <Card className="w-full p-3 bg-gray-50 border-gray-200">
         <p className="text-xs text-gray-600">
-          🤖 <strong>Advanced AI:</strong> This analysis uses facial landmark detection to map 468+ key points on your face,
-          analyze proportions, and recommend styles tailored to your unique facial structure.
+          {analysis && 'analysisType' in analysis && (analysis as any).analysisType === 'simplified' ? (
+            <>
+              ⚠️ <strong>Simplified Analysis:</strong> Using basic detection (full AI models unavailable). Try reloading or use a different browser.
+            </>
+          ) : (
+            <>
+              🤖 <strong>Advanced AI:</strong> This analysis uses facial landmark detection to map 468+ key points on your face,
+              analyze proportions, and recommend styles tailored to your unique facial structure.
+            </>
+          )}
         </p>
       </Card>
     </div>
