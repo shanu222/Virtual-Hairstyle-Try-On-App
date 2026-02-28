@@ -327,7 +327,7 @@ export function drawFacialLandmarks(
 
   // Draw landmarks as small circles
   ctx.fillStyle = '#00ff00';
-  landmarks.forEach((point, index) => {
+  landmarks.forEach((point: { x: number; y: number }, index: number) => {
     ctx.beginPath();
     ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
     ctx.fill();
@@ -346,7 +346,7 @@ export function drawFacialLandmarks(
   ctx.lineWidth = 2;
   ctx.beginPath();
   const outline = landmarks.slice(0, 17); // Face outline points
-  outline.forEach((point, index) => {
+  outline.forEach((point: { x: number; y: number }, index: number) => {
     if (index === 0) {
       ctx.moveTo(point.x, point.y);
     } else {
@@ -360,7 +360,7 @@ export function drawFacialLandmarks(
   ctx.lineWidth = 2;
   ctx.beginPath();
   const jawline = landmarks.slice(3, 13); // Jawline points
-  jawline.forEach((point, index) => {
+  jawline.forEach((point: { x: number; y: number }, index: number) => {
     if (index === 0) {
       ctx.moveTo(point.x, point.y);
     } else {
