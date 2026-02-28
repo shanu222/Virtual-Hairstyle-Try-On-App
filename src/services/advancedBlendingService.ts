@@ -33,7 +33,7 @@ export async function blendHairstyleWithFace(
   const rightCheek = landmarks[14];
 
   // Create hairstyle region mask
-  createHairstyleMask(ctx, landmarks, width, height, faceAnalysis);
+  createHairstyleMask(ctx, landmarks, width, height, faceAnalysis, hairColor);
 
   // Apply intelligent color blending
   applyIntelligentColorBlending(ctx, faceAnalysis, hairColor, brightness, landmarks, width, height);
@@ -53,7 +53,8 @@ function createHairstyleMask(
   landmarks: any[],
   width: number,
   height: number,
-  faceAnalysis: FacialAnalysis
+  faceAnalysis: FacialAnalysis,
+  hairColor: string
 ): void {
   ctx.save();
 
