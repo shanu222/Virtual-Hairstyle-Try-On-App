@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Scissors, Info, Menu } from 'lucide-react';
 import { PhotoCapture } from './components/PhotoCapture';
-import { HairstyleSelector, Hairstyle } from './components/HairstyleSelector';
+import { HairstyleSelector, Hairstyle, hairstyles } from './components/HairstyleSelector';
 import { ColorPicker } from './components/ColorPicker';
 import { ImagePreview } from './components/ImagePreview';
 import { Button } from './components/ui/button';
@@ -188,6 +188,7 @@ function App() {
                 hairColor={hairColor}
                 brightness={brightness}
                 onReset={handleReset}
+                allHairstyles={hairstyles}
               />
             </div>
           </div>

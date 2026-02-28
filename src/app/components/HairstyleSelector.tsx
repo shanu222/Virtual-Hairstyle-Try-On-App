@@ -19,7 +19,7 @@ interface HairstyleSelectorProps {
 }
 
 // Mock hairstyle data - in production, this would come from a database
-const hairstyles: Hairstyle[] = [
+export const hairstyles: Hairstyle[] = [
   // Short Styles
   { id: '1', name: 'Buzz Cut', category: 'short', imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=300&h=300&fit=crop', description: 'Clean and minimal' },
   { id: '2', name: 'Crew Cut', category: 'short', imageUrl: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=300&h=300&fit=crop', description: 'Classic military style' },
