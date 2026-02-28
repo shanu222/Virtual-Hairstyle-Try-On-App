@@ -14,6 +14,7 @@ interface ImagePreviewProps {
   hairColor: string;
   brightness: number;
   onReset: () => void;
+  onTakeNewPhoto: () => void;
   allHairstyles?: Hairstyle[];
 }
 
@@ -23,6 +24,7 @@ export function ImagePreview({
   hairColor,
   brightness,
   onReset,
+  onTakeNewPhoto,
   allHairstyles = [],
 }: ImagePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -37,7 +39,7 @@ export function ImagePreview({
   const [showLandmarks, setShowLandmarks] = useState(false);
   const imageRef = useRef<HTMLImageElement | null>(null);
 
-  // Load image and run facial analysis
+  // Load image (without automatic analysis)
   useEffect(() => {
     if (!canvasRef.current || !originalImage) return;
 
@@ -46,7 +48,6 @@ export function ImagePreview({
     if (!ctx) return;
 
     setIsProcessing(true);
-    setAnalysisError(null);
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -61,12 +62,13 @@ export function ImagePreview({
       // Draw original image
       ctx.drawImage(img, 0, 0);
 
-      // Run facial analysis
-      await performFacialAnalysis(img);
-
-      // Apply hairstyle overlay
+      // Apply hairstyle overlay if selected and analyzed
       if (selectedStyle) {
-        applyAdvancedHairstyleOverlay(ctx, img.width, img.height);
+        if (facialAnalysis) {
+          applyAdvancedHairstyleOverlay(ctx, img.width, img.height);
+        } else {
+          simulateHairstyleOverlay(ctx, img.width, img.height);
+        }
       }
 
       setIsProcessing(false);
@@ -79,7 +81,16 @@ export function ImagePreview({
     };
 
     img.src = originalImage;
-  }, [originalImage, selectedStyle, hairColor, brightness]);
+  }, [originalImage, selectedStyle, hairColor, brightness, facialAnalysis]);
+
+  // Manually trigger facial analysis
+  const handleAIAnalyze = async () => {
+    if (!imageRef.current) {
+      setAnalysisError('Please upload a photo first');
+      return;
+    }
+    await performFacialAnalysis(imageRef.current);
+  };
 
   // Perform facial analysis
   const performFacialAnalysis = async (img: HTMLImageElement) => {
@@ -258,6 +269,41 @@ export function ImagePreview({
             )}
           </div>
 
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleAIAnalyze}
+              disabled={isAnalyzing || isProcessing}
+              className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              title="Analyze face and get personalized recommendations"
+            >
+              <Brain className="w-4 h-4" />
+              {isAnalyzing ? 'Analyzing...' : facialAnalysis ? 'Re-analyze Face' : 'AI Analyze Face'}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onTakeNewPhoto}
+              title="Upload or capture a different photo"
+            >
+              Take New Photo
+            </Button>
+
+            <div className="flex-1" />
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onReset}
+              title="Start over"
+            >
+              Back to Start
+            </Button>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
@@ -302,11 +348,6 @@ export function ImagePreview({
             )}
 
             <div className="flex-1" />
-
-            <Button variant="outline" size="sm" onClick={onReset} title="Reset all settings">
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset
-            </Button>
             <Button variant="outline" size="sm" onClick={handleShare} title="Share preview">
               <Share2 className="w-4 h-4 mr-2" />
               Share
@@ -317,20 +358,35 @@ export function ImagePreview({
             </Button>
           </div>
 
-          {!selectedStyle && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-900">
-                <strong>💡 Tip:</strong> Upload a clear, front-facing photo for accurate AI facial analysis and
-                personalized hairstyle recommendations.
-              </p>
+          {!facialAnalysis && !isAnalyzing && !analysisError && (
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Brain className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-purple-900 mb-1">
+                    🎯 Get Personalized Recommendations
+                  </p>
+                  <p className="text-xs text-purple-800">
+                    Click <strong>"AI Analyze Face"</strong> to:
+                  </p>
+                  <ul className="text-xs text-purple-800 list-disc list-inside mt-1 space-y-0.5">
+                    <li>Detect your face shape and proportions</li>
+                    <li>Get AI-powered hairstyle suggestions</li>
+                    <li>Receive personalized color recommendations</li>
+                    <li>See realistic blending based on your features</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
 
-          {selectedStyle && (
+          {facialAnalysis && selectedStyle && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-sm text-green-900">
-                <strong>✨ AI Processing:</strong> Advanced blending with facial landmark detection is creating
-                a realistic hairstyle preview based on your face shape and proportions.
+                <strong>✨ AI-Enhanced:</strong> This preview uses advanced facial landmark detection for
+                realistic blending based on your {facialAnalysis.faceShape} face shape.
               </p>
             </div>
           )}

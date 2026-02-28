@@ -19,6 +19,11 @@ function App() {
     setUserPhoto(imageData);
   };
 
+  const handleTakeNewPhoto = () => {
+    setUserPhoto(null);
+    // Keep other settings (style, color, brightness) for continuity
+  };
+
   const handleReset = () => {
     setUserPhoto(null);
     setSelectedStyle(null);
@@ -168,12 +173,11 @@ function App() {
                     <Info className="w-4 h-4 text-purple-600" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-sm mb-1">AI Processing Note</h4>
+                    <h4 className="font-semibold text-sm mb-1">🧠 AI-Powered Analysis</h4>
                     <p className="text-xs text-gray-700">
-                      This demo simulates hairstyle overlay. In production, advanced AI models
-                      (MediaPipe Face Mesh, TensorFlow.js, or cloud APIs like Azure Face API)
-                      would detect 468+ facial landmarks for precise hairstyle mapping and
-                      realistic blending.
+                      Click <strong>"AI Analyze Face"</strong> to activate deep facial analysis
+                      using face-api.js with 68-point landmark detection. Get personalized
+                      hairstyle recommendations based on your face shape, jawline, and proportions.
                     </p>
                   </div>
                 </div>
@@ -188,6 +192,7 @@ function App() {
                 hairColor={hairColor}
                 brightness={brightness}
                 onReset={handleReset}
+                onTakeNewPhoto={handleTakeNewPhoto}
                 allHairstyles={hairstyles}
               />
             </div>

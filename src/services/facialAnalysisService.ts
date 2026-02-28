@@ -1,7 +1,8 @@
 import * as faceapi from 'face-api.js';
 
-// Try multiple CDN sources for models
+// Try local models first, then fallback to CDN sources
 const MODEL_URLS = [
+  '/models/', // Local models (preferred)
   'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights/',
   'https://unpkg.com/face-api.js@0.22.2/weights/',
   'https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/weights/',
