@@ -138,8 +138,7 @@ export async function analyzeFace(imageElement: HTMLImageElement): Promise<Facia
     // Detect face with smaller detection input size for faster processing
     const detections = await faceapi
       .detectAllFaces(imageElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 416 }))
-      .withFaceLandmarks()
-      .withFaceExpressions();
+      .withFaceLandmarks();
 
     if (detections.length === 0) {
       throw new Error(
