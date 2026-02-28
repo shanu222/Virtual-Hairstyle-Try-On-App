@@ -15,6 +15,7 @@ interface ImagePreviewProps {
   brightness: number;
   onReset: () => void;
   onTakeNewPhoto: () => void;
+  onSelectStyle?: (style: Hairstyle) => void;
   allHairstyles?: Hairstyle[];
 }
 
@@ -25,6 +26,7 @@ export function ImagePreview({
   brightness,
   onReset,
   onTakeNewPhoto,
+  onSelectStyle,
   allHairstyles = [],
 }: ImagePreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -125,6 +127,16 @@ export function ImagePreview({
         setRecommendations(topRecommendations);
         setSuggestedColor(color);
         console.log('Recommendations generated:', topRecommendations);
+
+        // Auto-select and apply top recommended hairstyle
+        if (topRecommendations.length > 0 && onSelectStyle) {
+          const topRecommendation = topRecommendations[0];
+          const recommendedHairstyle = allHairstyles.find(h => h.id === topRecommendation.styleId);
+          if (recommendedHairstyle) {
+            console.log('🎨 Auto-selecting AI recommended hairstyle:', recommendedHairstyle.name, `(${topRecommendation.matchScore}% match)`);
+            onSelectStyle(recommendedHairstyle);
+          }
+        }
       }
 
       setIsAnalyzing(false);

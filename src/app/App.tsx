@@ -193,6 +193,7 @@ function App() {
                 brightness={brightness}
                 onReset={handleReset}
                 onTakeNewPhoto={handleTakeNewPhoto}
+                onSelectStyle={setSelectedStyle}
                 allHairstyles={hairstyles}
               />
             </div>
