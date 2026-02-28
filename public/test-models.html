@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Test</title>
+</head>
+<body>
+    <h1>Face API Model Test</h1>
+    <div id="status">Testing model access...</div>
+    
+    <script>
+        async function testModels() {
+            const statusDiv = document.getElementById('status');
+            const models = [
+                '/models/tiny_face_detector_model-weights_manifest.json',
+                '/models/tiny_face_detector_model-shard1',
+                '/models/face_landmark_68_model-weights_manifest.json',
+                '/models/face_landmark_68_model-shard1'
+            ];
+            
+            statusDiv.innerHTML = '<h2>Testing model files:</h2>';
+            
+            for (const modelPath of models) {
+                try {
+                    const response = await fetch(modelPath);
+                    const status = response.ok ? '✅ ACCESSIBLE' : '❌ FAILED';
+                    const size = response.headers.get('content-length') || 'unknown';
+                    statusDiv.innerHTML += `<p>${status} ${modelPath} (${size} bytes)</p>`;
+                    
+                    if (!response.ok) {
+                        statusDiv.innerHTML += `<p style="color:red">Error: ${response.status} ${response.statusText}</p>`;
+                    }
+                } catch (error) {
+                    statusDiv.innerHTML += `<p>❌ FAILED ${modelPath}</p>`;
+                    statusDiv.innerHTML += `<p style="color:red">Error: ${error.message}</p>`;
+                }
+            }
+        }
+        
+        testModels();
+    </script>
+</body>
+</html>

@@ -1,12 +1,37 @@
 import * as faceapi from 'face-api.js';
 
-// Try local models first, then fallback to CDN sources
-// Note: Using well-tested CDN URLs that are known to work with face-api.js
+// Model URLs in priority order - try CDN first (known working), then local
 const MODEL_URLS = [
-  '/models/', // Local models (preferred)
-  'https://justadudewhohacks.github.io/face-api.js/models/', // Official face-api.js models
-  'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/', // Alternative CDN
+  'https://justadudewhohacks.github.io/face-api.js/models/', // Official CDN (most reliable)
+  '/models/', // Local models in public folder
 ];
+
+/**
+ * Verify a model URL is accessible by testing one file fetch
+ */
+async function verifyModelUrl(modelUrl: string, timeout = 10000): Promise<boolean> {
+  try {
+    const testFile = `${modelUrl}tiny_face_detector_model-weights_manifest.json`;
+    console.log(`🔍 Testing model URL: ${testFile}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(testFile, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      console.log(`✅ Model URL verified: ${modelUrl}`);
+      return true;
+    } else {
+      console.warn(`❌ Model URL returned ${response.status}: ${testFile}`);
+      return false;
+    }
+  } catch (error) {
+    console.warn(`❌ Failed to verify model URL ${modelUrl}:`, error instanceof Error ? error.message : error);
+    return false;
+  }
+}
 
 export interface FacialAnalysis {
   faceShape: 'oval' | 'round' | 'square' | 'heart' | 'long' | 'diamond';
@@ -36,48 +61,68 @@ let modelsLoaded = false;
 let modelLoadError: string | null = null;
 
 /**
- * Load face-api.js models from CDN with fallback
+ * Load face-api.js models with robust error handling
  */
 export async function initializeFaceAPI(): Promise<void> {
-  if (modelsLoaded) return;
+  if (modelsLoaded) {
+    console.log('✅ Models already loaded');
+    return;
+  }
   if (modelLoadError) throw new Error(modelLoadError);
 
+  console.log('🚀 Starting Face API initialization...');
   let lastError: Error | null = null;
 
   for (const modelUrl of MODEL_URLS) {
     try {
-      console.log(`🔄 Attempting to load models from: ${modelUrl}`);
+      console.log(`\n📍 Attempting to load models from: ${modelUrl}`);
 
-      // Only load the essential models for face detection and landmarks
-      const loadPromises = [
-        faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl),
-        faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl),
-      ];
+      // First verify the URL is accessible
+      const isAccessible = await verifyModelUrl(modelUrl, 10000);
+      if (!isAccessible) {
+        console.log(`⏭️ Skipping inaccessible URL: ${modelUrl}`);
+        continue;
+      }
 
-      // Add timeout for model loading (30 seconds)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Model loading timeout after 30s')), 30000)
+      // Now attempt to load the actual models
+      console.log(`⏳ Loading models from ${modelUrl}...`);
+      
+      const loadTinyFace = faceapi.nets.tinyFaceDetector.loadFromUri(modelUrl);
+      const loadLandmarks = faceapi.nets.faceLandmark68Net.loadFromUri(modelUrl);
+
+      // Create timeout
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Model loading timeout (30s)')), 30000)
       );
 
-      console.log(`⏳ Loading models...`);
-      await Promise.race([Promise.all(loadPromises), timeoutPromise]);
+      // Load both models in parallel with timeout
+      await Promise.race([
+        Promise.all([loadTinyFace, loadLandmarks]),
+        timeoutPromise
+      ]);
 
       modelsLoaded = true;
       modelLoadError = null;
-      console.log('✅ Face API models loaded successfully from:', modelUrl);
+      console.log('\n✅✅✅ SUCCESS! Face API models loaded and ready!');
+      console.log(`📦 Models loaded from: ${modelUrl}`);
       return;
+      
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`❌ Failed to load from ${modelUrl}:`, error);
-      console.error('Error details:', lastError.message, lastError.stack);
+      console.error(`❌ Failed to load from ${modelUrl}`);
+      console.error(`   Error: ${lastError.message}`);
       continue;
     }
   }
 
-  // All CDNs failed
-  const errorDetails = lastError ? `Last error: ${lastError.message}` : 'Unknown error';
-  modelLoadError = `Failed to load facial analysis models from all sources. ${errorDetails}. Please check:\n1. Internet connection\n2. Browser console for detailed errors\n3. Try refreshing the page`;
-  console.error('❌ All model loading attempts failed:', errorDetails);
+  // All sources failed
+  const errorMsg = lastError?.message || 'Unknown error';
+  modelLoadError = `Failed to load facial analysis models from all sources.\n\nDetails: ${errorMsg}\n\nPlease:\n1. Check your internet connection\n2. Try refreshing the page\n3. Check browser console (F12) for details`;
+  
+  console.error('\n❌❌❌ CRITICAL: All model loading attempts failed!');
+  console.error(`Last error: ${lastError?.message}`);
+  console.error(`Stack: ${lastError?.stack}`);
+  
   throw new Error(modelLoadError);
 }
 
