@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Download, RotateCcw, ZoomIn, ZoomOut, Share2, Eye, EyeOff, Brain } from 'lucide-react';
+import { Download, RotateCcw, ZoomIn, ZoomOut, Share2, Eye, EyeOff, Brain, Wand2, X } from 'lucide-react';
 import { Hairstyle } from './HairstyleSelector';
 import { initializeFaceAPI, analyzeFace, drawFacialLandmarks, FacialAnalysis } from '../../services/facialAnalysisService';
 import { generateRecommendations, RecommendedStyle } from '../../services/hairstyleRecommendationEngine';
 import { blendHairstyleWithFace, adjustColorBrightness } from '../../services/advancedBlendingService';
+import { generateRealisticPreview, downloadGeneratedPreview } from '../../services/realisticPreviewService';
 import { FacialAnalysisPanel } from './FacialAnalysisPanel';
 
 interface ImagePreviewProps {
@@ -34,10 +35,13 @@ export function ImagePreview({
   const [zoom, setZoom] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
   const [facialAnalysis, setFacialAnalysis] = useState<FacialAnalysis | null>(null);
   const [recommendations, setRecommendations] = useState<RecommendedStyle[]>([]);
   const [suggestedColor, setSuggestedColor] = useState('#3d2817');
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [realisticPreviewUrl, setRealisticPreviewUrl] = useState<string | null>(null);
   const [showLandmarks, setShowLandmarks] = useState(false);
   const imageRef = useRef<HTMLImageElement | null>(null);
 
@@ -249,6 +253,54 @@ export function ImagePreview({
     }
   };
 
+  // Generate realistic preview using AI
+  const handleGenerateRealisticPreview = async () => {
+    if (!facialAnalysis || !selectedStyle || !originalImage) {
+      setPreviewError('Please complete facial analysis and select a hairstyle first');
+      return;
+    }
+
+    try {
+      setIsGeneratingPreview(true);
+      setPreviewError(null);
+
+      console.log('🎨 Starting realistic preview generation...');
+      const previewUrl = await generateRealisticPreview(
+        originalImage,
+        selectedStyle,
+        facialAnalysis,
+        hairColor
+      );
+
+      setRealisticPreviewUrl(previewUrl);
+      console.log('✅ Realistic preview generated:', previewUrl);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to generate preview';
+      console.error('Preview generation error:', errorMsg);
+      setPreviewError(errorMsg);
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  // Download realistic preview
+  const handleDownloadRealisticPreview = async () => {
+    if (!realisticPreviewUrl || !selectedStyle) return;
+
+    try {
+      await downloadGeneratedPreview(realisticPreviewUrl, selectedStyle.name);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to download';
+      setPreviewError(errorMsg);
+    }
+  };
+
+  // Clear realistic preview
+  const handleClearRealisticPreview = () => {
+    setRealisticPreviewUrl(null);
+    setPreviewError(null);
+  };
+
   return (
     <div className="space-y-4">
       <Card className="w-full p-4">
@@ -293,6 +345,18 @@ export function ImagePreview({
             >
               <Brain className="w-4 h-4" />
               {isAnalyzing ? 'Analyzing...' : facialAnalysis ? 'Re-analyze Face' : 'AI Analyze Face'}
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleGenerateRealisticPreview}
+              disabled={isGeneratingPreview || !facialAnalysis || !selectedStyle}
+              className="gap-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700"
+              title="Generate realistic AI preview with selected hairstyle"
+            >
+              <Wand2 className="w-4 h-4" />
+              {isGeneratingPreview ? 'Generating (30s)...' : 'Generate Realistic Preview'}
             </Button>
 
             <Button
@@ -399,6 +463,64 @@ export function ImagePreview({
               <p className="text-sm text-green-900">
                 <strong>✨ AI-Enhanced:</strong> This preview uses advanced facial landmark detection for
                 realistic blending based on your {facialAnalysis.faceShape} face shape.
+              </p>
+            </div>
+          )}
+
+          {/* Realistic Preview Section */}
+          {realisticPreviewUrl && (
+            <div className="space-y-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-lg">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-amber-900">✨ Realistic AI Preview</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearRealisticPreview}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="bg-white rounded-lg overflow-hidden border border-amber-200">
+                <img
+                  src={realisticPreviewUrl}
+                  alt={`Realistic preview with ${selectedStyle.name}`}
+                  className="w-full h-auto"
+                />
+              </div>
+              <p className="text-xs text-amber-800">
+                This is an AI-generated photorealistic preview of how you would look with the <strong>{selectedStyle.name}</strong> hairstyle.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleDownloadRealisticPreview}
+                  className="gap-2 flex-1 bg-amber-600 hover:bg-amber-700"
+                  title="Download this realistic preview"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Realistic Preview
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateRealisticPreview}
+                  disabled={isGeneratingPreview}
+                  className="gap-2"
+                  title="Try another hairstyle"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  Regenerate
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Preview Error */}
+          {previewError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-900">
+                <strong>Error:</strong> {previewError}
               </p>
             </div>
           )}
