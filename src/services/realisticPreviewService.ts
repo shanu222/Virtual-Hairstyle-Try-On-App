@@ -188,16 +188,24 @@ function getStyleDescription(category: string): string {
 }
 
 /**
- * Download image from URL
+ * Download image from URL with CORS fallback
  */
 export async function downloadGeneratedPreview(
   imageUrl: string,
   hairstyleName: string
 ): Promise<void> {
   try {
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
+    // Try direct download first (works on same-origin)
+    const response = await fetch(imageUrl, {
+      mode: 'cors',
+      credentials: 'omit',
+    });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -209,8 +217,21 @@ export async function downloadGeneratedPreview(
 
     console.log('✅ Preview downloaded successfully');
   } catch (error) {
-    console.error('Download failed:', error);
-    throw new Error('Failed to download preview image');
+    console.error('Direct download failed, trying alternative method:', error);
+    
+    // Fallback: Open in new window for user to save manually
+    try {
+      const newWindow = window.open(imageUrl, '_blank');
+      if (!newWindow) {
+        throw new Error('Could not open image. Please try right-clicking the preview and selecting "Save image as..."');
+      }
+      console.log('✅ Image opened in new window');
+    } catch (fallbackError) {
+      console.error('Fallback download also failed:', fallbackError);
+      throw new Error(
+        'Download failed. You can right-click the preview image and select "Save image as..." to download it.'
+      );
+    }
   }
 }
 
